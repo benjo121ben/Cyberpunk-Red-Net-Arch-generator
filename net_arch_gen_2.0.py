@@ -62,7 +62,7 @@ def roll_branches(floor_amount):
     else:
         max_branches = 1 + int((floor_amount - 5) / 2)
     erg = 1
-    perc = 3 if floor_amount < 8 else 5 if floor_amount < 10 else 7
+    perc = 4 if floor_amount < 7 else 6 if floor_amount < 10 else 7
     while roll_dice(10) <= perc and floor_amount > 3 + erg * 2 and erg < max_branches:
         erg += 1
         perc -= 1 if floor_amount < 9 else 2
@@ -259,7 +259,7 @@ class Branch:
         #      raise Exception(f"ERROR: BRANCH HAS AN INCORRECT AMOUNT OF FLOORS.\n"
         #                      f"parent_branch:{self.parent_branch}\n"
         #                      f"and pos:{self.pos}\n")
-        return "--".join(print_floor(floor) for floor in self.floors) + f"{self.parent_branch}, {self.pos}"
+        return "--".join(print_floor(floor) for floor in self.floors)
 
     def add_floor(self, floor):
         if len(self.floors) == self.size:
