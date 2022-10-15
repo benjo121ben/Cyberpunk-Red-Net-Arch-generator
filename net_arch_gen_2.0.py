@@ -7,25 +7,37 @@ padding_len = 13
 FLOOR_ENTRIES = [
     ["File DV6", "Passw. DV6", "Passw. DV8", "Skunk", "Wisp", "Killer"],  # lobby
     [
-        "Hell.", "Sabertooth", "Raven x2", "Hell.", "Wisp", "Raven", "Passw. DV6", "File DV6",
-        "CNode.DV6", "Passw. DV6", "Skunk", "Asp", "Scorpion", "Killer, Skunk", "Wisp x3", "Liche"
+        "Hellh.", "Sabert.", "Raven x2", "Hellh.", "Wisp", "Raven", "Passw. DV6", "File DV6",
+        "CNode.DV6", "Passw. DV6", "Skunk", "Asp", "Scorpion", "Killer,Skunk", "Wisp x3", "Liche"
     ],  # basic
     [
-        "Hell. x2", "Hell., Killer", "Skunk x2", "Sabertooth", "Scorpion", "Hell.",
-        "Passw. DV8", "File DV8", "CNode. DV8", "Passw. DV8", "Asp", "Killer", "Liche", "Asp",
+        "Hellh. x2", "Hellh. Killer", "Skunk x2", "Sabert.", "Scorpion", "Hellh.",
+        "Passw. DV8", "File DV8", "CNode.DV8", "Passw.DV8", "Asp", "Killer", "Liche", "Asp",
         "Raven x3", "Liche, Raven"
     ],  # standard
     [
-        "Kraken", "Hell., Scorpion", "Hell., Killer", "Raven x2", "Sabertooth", "Hell.",
-        "Passw. DV10", "File DV10", "CNode. DV10", "Passw. DV10", "Killer", "Liche", "Dragon",
+        "Kraken", "Hellh.Scorp.", "Hellh. Killer", "Raven x2", "Sabert.", "Hellh.",
+        "Passw.DV10", "File DV10", "CNode.DV10", "Passw.DV10", "Killer", "Liche", "Dragon",
         "Asp, Raven", "Dragon, Wisp", "Giant"
     ],  # uncommon
     [
-        "Hell. x3", "Asp x2", "Hellho., Liche", "Wisp x3", "Hell., Sabertooth", "Kraken",
-        "Passw. DV12", "File DV12", "CNode. DV12", "Passw. DV12", "Giant", "Dragon", "Killer, Scorpion",
-        "Kraken", "Raven, Wisp, Hell.", "Dragon x2"
+        "Hellh. x3", "Asp x2", "Hellh., Liche", "Wisp x3", "Hellh.Sabert.", "Kraken",
+        "Passw.DV12", "File DV12", "CNode. DV12", "Passw.DV12", "Giant", "Dragon", "Scorp.Killer",
+        "Kraken", "Hellh.Rav.Wisp", "Dragon x2"
     ]  # advanced
 ]
+
+print(
+    [
+        max(
+            [
+                (floor, len(floor), indx) for indx, floor in enumerate(entry)
+            ],
+            key=lambda t: len(t[0])
+        )
+        for listindx, entry in enumerate(FLOOR_ENTRIES)
+    ]
+)
 
 
 def get_floor_options(difficulty: int):
@@ -44,100 +56,106 @@ def roll_dice(sided: int, multiple: int = 1):
 
 
 def roll_branches(floor_amount):
-    max_branches = 4
-    if floor_amount <= 4:
+    max_branches = -1
+    if floor_amount < 7:
         return 1
-    elif floor_amount <= 8:
-        max_branches = 2
-    elif floor_amount <= 13:
-        max_branches = 3
-    elif floor_amount <= 18:
-        max_branches = 4
+    else:
+        max_branches = 1 + int((floor_amount - 5) / 2)
     erg = 1
-    while roll_dice(10) >= 6 and floor_amount > 3 + erg and erg < max_branches:
+    perc = 3 if floor_amount < 8 else 5 if floor_amount < 10 else 7
+    while roll_dice(10) <= perc and floor_amount > 3 + erg * 2 and erg < max_branches:
         erg += 1
+        perc -= 1 if floor_amount < 9 else 2
     return erg
 
 
-def generate_main_branch(floors: int, branch_count: int, branch_list: list):
-    min_main_floors = 3 + math.ceil((floors - 3) / branch_count)
-    modifier = 0
-    if floors >= 10 and 1 < branch_count < 5:
-        modifier += 1
-    if floors >= 14 and 1 < branch_count < 5:
-        modifier += 1
-    max_main_floors = floors - branch_count + 1 - modifier * 2
-    size = random.randint(min_main_floors, max_main_floors)
-    branch_list.append(Branch(size))
-    return size
+def generate_architecture(branch_count, branch_list, floor_count):
+    def generate_main_branch(floors: int, branch_count: int, branch_list: list):
+        min_main_floors = 3 + math.ceil((floors - 3) / branch_count)
+        modifier = 0
+        if 1 < branch_count < 5 and floors >= 10:
+            modifier = 1 if floors < 14 else 2
+        max_main_floors = floors - (branch_count - 1) * 2
+        if max_main_floors - modifier >= min_main_floors:
+            max_main_floors -= modifier
+        size = random.randint(min_main_floors, max_main_floors)
+        branch_list.append(Branch(size))
+        return size
 
+    def assign_parent_branch(branch, branch_list, subtree_perc):
+        main_branch_len = len(branch_list[0])
+        branch.pos = random.randint(2, main_branch_len - branch.size - 1)
+        branch.parent_branch = 0
+        new_perc = subtree_perc + 1
 
-def generate_secondary_branches(remaining_floors: int, branch_count: int, branch_list: list):
-    valid = False
-    while not valid:
-        temp_floor_count = remaining_floors
+        if roll_dice(10) > subtree_perc:  # branch isnt a subtree
+            return new_perc
+
+        possible_parents = []
+        # checks whether a parent is high up enough to have the branch attach without overtaking the main branch
+        for poss_index in range(1, len(branch_list)):
+            parent = branch_list[poss_index]
+            maximum_pos = min(main_branch_len - branch.size - 1, parent.pos + branch.size - 1)
+            if len(parent) == 1 or parent.pos + branch.size >= main_branch_len or maximum_pos < parent.pos + 1:
+                continue
+            else:
+                possible_parents.append((poss_index, maximum_pos, parent))
+        if len(possible_parents) > 0:
+            parent_index, maximum_pos, parent = possible_parents[random.randint(0, len(possible_parents) - 1)]
+            # if this part is reached, then it is a successful subtree and will break the loop
+            branch.pos = random.randint(parent.pos + 1, maximum_pos)
+            branch.parent_branch = parent_index
+            new_perc = subtree_perc - 1
+        return new_perc
+
+    def generate_single_secondary_branch(branch_count: int, branch_list: list, subtree_perc, floors_left_count):
         max_branch_space = len(branch_list[0]) - 3
-        # max size if branch starts at second floor of main and doesn't overtake main
-        try:
-            subtree_perc = 0  # we start at 0, the first is always a subtree of main
-            for _ in range(1, branch_count):
-                if len(branch_list) == 2:
-                    subtree_perc = 4
-                temp_floor_count, is_subtree = generate_single_secondary_branch(
-                    branch_count, branch_list, max_branch_space, subtree_perc, temp_floor_count)
-                if is_subtree:
-                    subtree_perc -= 1
-                else:
-                    subtree_perc += 1
-            valid = True
+        remaining_branches = branch_count - len(branch_list) - 1
+        max_floors = min(
+            max_branch_space,
+            floors_left_count - remaining_branches * 2  # max size cut off due to other branches
+        )
+        min_floors = max(2, floors_left_count - remaining_branches * max_branch_space)
+        if min_floors > max_floors:
+            Exception(
+                f"Secondary branch is required to take {min_floors} but only has space for {max_floors}")
+        if floors_left_count < 2:
+            Exception(f"Not enough floors to fill a branch")
 
-        except Exception as e:
-            valid = False
-            eprint("generate_sec_failed: ", e)
-            traceback.print_exc()
-            for i in range(1, len(branch_list)):
-                eprint("ERROR", branch_list[i].floors, branch_list[i].size)
+        branch = Branch(random.randint(min_floors, max_floors))
+        subtree_perc = assign_parent_branch(branch, branch_list, subtree_perc)
+        # this code is only executed if no suitable branch was found
+        branch_list.append(branch)
+        return floors_left_count - branch.size, subtree_perc
 
-                del branch_list[i]
+    def generate_secondary_branches(floor_size: int, branch_count: int, branch_list: list):
+        for tries in range(0,200):
+            try:
+                subtree_perc = 0  # we start at 0, the first is always a subtree of main
+                for _ in range(1, branch_count):
+                    if len(branch_list) == 2:
+                        subtree_perc = 4
+                    floor_size, subtree_perc = generate_single_secondary_branch(branch_count, branch_list, subtree_perc, floor_size)
+                return
 
+            except Exception as e:
+                eprint("generate_sec_failed: ", e)
+                traceback.print_exc()
+                for i in range(1, len(branch_list)):
+                    eprint("ERROR", branch_list[i].floors, branch_list[i].size)
+                    del branch_list[i]
+        raise Exception("generate_secondary_branches ran 200 times without concluding, something is wrong here")
 
-def get_subtree_position(branch_len: int, parent, main_branch_len: int):
-    if len(parent) == 1 or parent.pos + branch_len >= main_branch_len:
-        return False, -1
-    maximum_pos = min(main_branch_len - branch_len - 1, parent.pos + branch_len - 1)
-    if maximum_pos < parent.pos + 1:
-        return False, -1
-    return True, random.randint(parent.pos + 1, maximum_pos)
-
-
-def generate_single_secondary_branch(branch_count, branch_list, max_branch_space, subtree_perc, floors_left_count):
-    remaining_branches = branch_count - len(branch_list) - 1
-    max_floors = min(
-        max_branch_space,
-        floors_left_count - remaining_branches  # max size cut off due to other branches
-    )
-    min_floors = max(1, floors_left_count - remaining_branches * max_branch_space)
-    if min_floors > max_branch_space:
-        Exception(f"Secondary branch is required to take {min_floors} but only has space for {max_branch_space}")
-
-    floor_count = random.randint(min_floors, max_floors)
-    branch = Branch(floor_count)
-    floors_left_count - floor_count
-    subtree = roll_dice(10) <= subtree_perc
-    if subtree:
-        for i in range(0, 7):
-            parent_index = random.randint(1, len(branch_list) - 1)
-            parent = branch_list[parent_index]
-            possible, branch.pos = get_subtree_position(floor_count, parent, len(branch_list[0]))
-            if possible:
-                branch.parent_branch = parent_index
-                branch_list.append(branch)
-                return floors_left_count - floor_count, True
-    # this code is only executed if no suitable branch was found
-    branch.pos = random.randint(2, len(branch_list[0]) - floor_count - 1)
-    branch.parent_branch = 0
-    branch_list.append(branch)
-    return floors_left_count - floor_count, False
+    main_branch_size = generate_main_branch(floor_count, branch_count, branch_list)
+    if branch_count > 1 and main_branch_size <= 2 + (floor_count - main_branch_size) / (branch_count - 1):
+        raise Exception(f"Irregular numbers, this should not happen"
+                        f"{floor_count}, {branch_count}, {main_branch_size}")
+    generate_secondary_branches(floor_count - main_branch_size, branch_count, branch_list)
+    check = sum([branch.size for branch in branch_list])
+    if not check == floor_count:
+        raise Exception(f"Irregular size in branches, this should not happen"
+                        f"{floor_count}, {branch_count}, {check}, {main_branch_size}")
+    return main_branch_size
 
 
 def print_inbetween(index, active_columns: list[list[bool]]):
@@ -241,7 +259,7 @@ class Branch:
         #      raise Exception(f"ERROR: BRANCH HAS AN INCORRECT AMOUNT OF FLOORS.\n"
         #                      f"parent_branch:{self.parent_branch}\n"
         #                      f"and pos:{self.pos}\n")
-        return "--".join(print_floor(floor) for floor in self.floors)
+        return "--".join(print_floor(floor) for floor in self.floors) + f"{self.parent_branch}, {self.pos}"
 
     def add_floor(self, floor):
         if len(self.floors) == self.size:
@@ -293,10 +311,12 @@ def get_difficulty(test_difficulty=-1):
         return test_difficulty
     print(
         "Please select difficulty\n"
-        "1-Basic Difficulty    | DV6  | Normal interface level 2 | Deadly bottom inteface level: N/A\n"
-        "2-Standard Difficulty | DV8  | Normal interface level 4 | Deadly bottom inteface level: 2\n"
-        "3-Uncommon Difficulty | DV10 | Normal interface level 6 | Deadly bottom inteface level: 4\n"
-        "4-Advanced Difficulty | DV12 | Normal interface level 8 | Deadly bottom inteface level: 6\n"
+        "Nr | Difficulty  | DV   | recomm. interface | potentially deadly interface\n"
+        "--------------------------------------------------------------------------\n"
+        "1  | Basic       | DV6  |         2         | inteface <= N/A\n"
+        "2  | Standard    | DV8  |         4         | inteface <= 2\n"
+        "3  | Uncommon    | DV10 |         6         | inteface <= 4\n"
+        "4  | Advanced    | DV12 |         8         | inteface <= 6\n"
         "Difficulty:"
     )
     return get_int(1, 4)
@@ -322,58 +342,61 @@ def main(test_sample: int, test_size=-1, test_difficulty=-1):
     while not exit_cond:
         for _ in range(0, test_sample):
             floor_count = get_size(test_size)
-            floor_fill_list = get_floor_options(get_difficulty(test_difficulty))
-            used = {-1}  # tracks which floor entries have been used already
+            difficulty = get_difficulty(test_difficulty)
+
             branch_list = []
             branch_count = roll_branches(floor_count)
-            main_branch_size = 0
             try:
-                main_branch_size = generate_main_branch(floor_count, branch_count, branch_list)
-                if branch_count > 1 and main_branch_size <= 2 + (floor_count - main_branch_size) / (branch_count - 1):
-                    raise Exception(f"Irregular numbers, this should not happen"
-                                    f"{floor_count}, {branch_count}, {main_branch_size}")
-                generate_secondary_branches(floor_count - main_branch_size, branch_count, branch_list)
-                check = sum([branch.size for branch in branch_list])
-                if not check == floor_count:
-                    raise Exception(f"Irregular size in branches, this should not happen"
-                                    f"{floor_count}, {branch_count}, {check}, {main_branch_size}")
+                main_branch_size = generate_architecture(branch_count, branch_list, floor_count)
+
+                populate_floors(branch_count, branch_list, difficulty, floor_count)
+
+                sorted_branch_list = []
+                recursive_sort(sorted_branch_list, branch_list, 0)
+                del branch_list
+
+                enabled_matrix = create_output_matrix(branch_count, sorted_branch_list, main_branch_size)
+
+                for index in range(0, len(sorted_branch_list)):
+                    branch = sorted_branch_list[index]
+                    print(print_branch(branch, index, enabled_matrix))
+                    if not index == len(sorted_branch_list) - 1:
+                        print(print_inbetween(index, enabled_matrix))
 
             except Exception as e:
                 eprint("There was an error generating this NET-Arch. Please retry")
+                traceback.print_exc()
                 eprint(e)
-
-            fill_floors(branch_list[0], used, floor_fill_list, True)
-            print("\nfloors:", floor_count, "branches:", branch_count)
-            for i in range(1, len(branch_list)):
-                branch = branch_list[i]
-                fill_floors(branch, used, floor_fill_list, False)
-                if not len(branch.floors) == branch.size:
-                    eprint("ERROR", branch.floors, branch.size)
-
-            sorted_branch_list = []
-            recursive_sort(sorted_branch_list, branch_list, 0)
-            branch_list = sorted_branch_list
-
-            enabled_matrix = [[False for _ in range(0, main_branch_size)] for _ in range(1, branch_count)]
-            for index in range(1, len(branch_list) + 1):
-                branch = branch_list[len(branch_list) - index]
-                for i in range(index, len(enabled_matrix) + 1):
-                    if not index == len(sorted_branch_list):
-                        upper_branch = sorted_branch_list[len(sorted_branch_list) - index - 1]
-                        enabled_matrix[len(enabled_matrix) - i][branch.pos - 1] = True
-                        if upper_branch.pos <= branch.pos - 1 <= upper_branch.pos + upper_branch.size:
-                            break
-
-            for index in range(0, len(branch_list)):
-                branch = branch_list[index]
-                print(print_branch(branch, index, enabled_matrix))
-                if not index == len(branch_list) - 1:
-                    print(print_inbetween(index, enabled_matrix))
 
         if not test_sample == 1:
             break
         elif input("\nInput \"q\" to exit. Input anything else for another NET-Arch\n") == "q":
             exit_cond = True
+
+
+def populate_floors(branch_count, branch_list, difficulty, floor_count):
+    used = {-1}  # tracks which floor entries have been used already
+    floor_fill_list = get_floor_options(difficulty)
+    fill_floors(branch_list[0], used, floor_fill_list, True)
+    print("\nfloors:", floor_count, "branches:", branch_count)
+    for i in range(1, len(branch_list)):
+        branch = branch_list[i]
+        fill_floors(branch, used, floor_fill_list, False)
+        if not len(branch.floors) == branch.size:
+            eprint("ERROR", branch.floors, branch.size)
+
+
+def create_output_matrix(branch_count, branch_list, main_branch_size):
+    enabled_matrix = [[False for _ in range(0, main_branch_size)] for _ in range(1, branch_count)]
+    for index in range(1, len(branch_list) + 1):
+        branch = branch_list[len(branch_list) - index]
+        for i in range(index, len(enabled_matrix) + 1):
+            if not index == len(branch_list):
+                upper_branch = branch_list[len(branch_list) - i - 1]
+                enabled_matrix[len(enabled_matrix) - i][branch.pos - 1] = True
+                if upper_branch.pos <= branch.pos - 1 <= upper_branch.pos + upper_branch.size:
+                    break
+    return enabled_matrix
 
 
 main(1)
