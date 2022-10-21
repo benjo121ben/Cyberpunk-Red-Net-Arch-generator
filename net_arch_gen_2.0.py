@@ -282,7 +282,7 @@ def get_int(min_int, max_int):
                 non_valid_size = False
             else:
                 raise Exception("")
-        except:
+        except Exception:
             print(f"Please enter a number between {min_int} and {max_int}.\n")
     return num
 
@@ -313,10 +313,10 @@ def get_difficulty(test_difficulty=-1):
         "Please select difficulty\n"
         "Nr | Difficulty  | DV   | recomm. interface | potentially deadly interface\n"
         "--------------------------------------------------------------------------\n"
-        "1  | Basic       | DV6  |         2         | inteface <= N/A\n"
-        "2  | Standard    | DV8  |         4         | inteface <= 2\n"
-        "3  | Uncommon    | DV10 |         6         | inteface <= 4\n"
-        "4  | Advanced    | DV12 |         8         | inteface <= 6\n"
+        "1  | Basic       | DV6  |         2         | interface <= N/A\n"
+        "2  | Standard    | DV8  |         4         | interface <= 2\n"
+        "3  | Uncommon    | DV10 |         6         | interface <= 4\n"
+        "4  | Advanced    | DV12 |         8         | interface <= 6\n"
         "Difficulty:"
     )
     return get_int(1, 4)
@@ -331,6 +331,31 @@ def recursive_sort(new_branch_list, old_branch_list, current_index):
     )
     for child_index, _ in sorted_children:
         recursive_sort(new_branch_list, old_branch_list, child_index)
+
+
+def populate_floors(branch_count, branch_list, difficulty, floor_count):
+    used = {-1}  # tracks which floor entries have been used already
+    floor_fill_list = get_floor_options(difficulty)
+    fill_floors(branch_list[0], used, floor_fill_list, True)
+    print("\nfloors:", floor_count, "branches:", branch_count)
+    for i in range(1, len(branch_list)):
+        branch = branch_list[i]
+        fill_floors(branch, used, floor_fill_list, False)
+        if not len(branch.floors) == branch.size:
+            eprint("ERROR", branch.floors, branch.size)
+
+
+def create_output_matrix(branch_count, branch_list, main_branch_size):
+    enabled_matrix = [[False for _ in range(0, main_branch_size)] for _ in range(1, branch_count)]
+    for index in range(1, len(branch_list) + 1):
+        branch = branch_list[len(branch_list) - index]
+        for i in range(index, len(enabled_matrix) + 1):
+            if not index == len(branch_list):
+                upper_branch = branch_list[len(branch_list) - i - 1]
+                enabled_matrix[len(enabled_matrix) - i][branch.pos - 1] = True
+                if upper_branch.pos <= branch.pos - 1 <= upper_branch.pos + upper_branch.size:
+                    break
+    return enabled_matrix
 
 
 def main(test_sample: int, test_size=-1, test_difficulty=-1):
@@ -372,31 +397,6 @@ def main(test_sample: int, test_size=-1, test_difficulty=-1):
             break
         elif input("\nInput \"q\" to exit. Input anything else for another NET-Arch\n") == "q":
             exit_cond = True
-
-
-def populate_floors(branch_count, branch_list, difficulty, floor_count):
-    used = {-1}  # tracks which floor entries have been used already
-    floor_fill_list = get_floor_options(difficulty)
-    fill_floors(branch_list[0], used, floor_fill_list, True)
-    print("\nfloors:", floor_count, "branches:", branch_count)
-    for i in range(1, len(branch_list)):
-        branch = branch_list[i]
-        fill_floors(branch, used, floor_fill_list, False)
-        if not len(branch.floors) == branch.size:
-            eprint("ERROR", branch.floors, branch.size)
-
-
-def create_output_matrix(branch_count, branch_list, main_branch_size):
-    enabled_matrix = [[False for _ in range(0, main_branch_size)] for _ in range(1, branch_count)]
-    for index in range(1, len(branch_list) + 1):
-        branch = branch_list[len(branch_list) - index]
-        for i in range(index, len(enabled_matrix) + 1):
-            if not index == len(branch_list):
-                upper_branch = branch_list[len(branch_list) - i - 1]
-                enabled_matrix[len(enabled_matrix) - i][branch.pos - 1] = True
-                if upper_branch.pos <= branch.pos - 1 <= upper_branch.pos + upper_branch.size:
-                    break
-    return enabled_matrix
 
 
 main(1)
