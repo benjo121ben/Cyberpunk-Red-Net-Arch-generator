@@ -27,17 +27,6 @@ FLOOR_ENTRIES = [
     ]  # advanced
 ]
 
-print(
-    [
-        max(
-            [
-                (floor, len(floor), indx) for indx, floor in enumerate(entry)
-            ],
-            key=lambda t: len(t[0])
-        )
-        for listindx, entry in enumerate(FLOOR_ENTRIES)
-    ]
-)
 
 
 def get_floor_options(difficulty: int):

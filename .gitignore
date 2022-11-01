@@ -1,2 +1,5 @@
 .idea/
 night_market_generator.py
+dist/
+build/
+*.spec
