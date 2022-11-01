@@ -4,6 +4,12 @@ A generator used to generate NET-Architectures for the Tabletop Game Cyberpunk R
 ## Requirements
 if you have python installed, you can just run this out of the box, no other packages necessary
 
+## How to run
+### Windows
+Download the latest windows release [here](https://github.com/benjo121ben/Cyberpunk-Red-Net-Arch-generator/releases) unzip and run `net_arch_gen_2.0.exe`
+### Linux and Mac
+You will have to download [net_arch_gen.py](./net_arch_gen_2.0.py) and run it with python by yourself.
+
 ## Credit 
 The program was inspired by and is loosely based on MildarAA's NET-Generator, which I decided to completely redo because of the way the branches were printed.
 And while the prints are still not perfect, I prefer it this way.\
